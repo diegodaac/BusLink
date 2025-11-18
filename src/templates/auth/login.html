@@ -1,0 +1,100 @@
+{% extends "./layout.html" %}
+{% block title %}Login{% endblock %}
+
+{% block customCSS %}
+<link rel="stylesheet" href="{{ url_for('static', filename ='css/login.css') }}">
+{% endblock %}
+
+{% block body %}
+<body class="bg-body-tertiary">
+  <main class="container d-flex min-vh-100 align-items-center justify-content-center">
+    <div class="w-100" style="max-width: 380px;">
+
+      <!-- Alerts / flashes -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-3">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'warning' if category=='message' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <!-- Logo -->
+      <div class="text-center mb-4">
+        <img src="{{ url_for('static', filename='img/logo_bg.png') }}" alt="BusLink" width="200" height="200">
+      </div>
+
+      <h1 class="h3 mb-3 fw-semibold text-center">Iniciar sesión</h1>
+
+      <form id="signinForm" method="POST" action="{{ url_for('login') }}" novalidate class="needs-validation">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-floating mb-3">
+          <input
+            type="email"
+            class="form-control"
+            id="email"
+            name="email"
+            placeholder="nombre@buslink.com"
+            required
+            autocomplete="username"
+            pattern="^[A-Za-z0-9._%+\-]+@buslink\.com$"
+            value="{{ request.form.get('email','') }}"
+          >
+          <label for="email">Correo corporativo</label>
+          <div class="invalid-feedback">Usa tu correo @buslink.com</div>
+        </div>
+
+        <div class="form-floating mb-3">
+          <input
+            type="password"
+            class="form-control"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            required
+            minlength="8"
+            autocomplete="current-password"
+          >
+          <label for="password">Contraseña</label>
+          <div class="invalid-feedback">Mínimo 8 caracteres.</div>
+        </div>
+
+        <div class="form-check text-start mb-3">
+          <input class="form-check-input" type="checkbox" value="1" id="remember" name="remember">
+          <label class="form-check-label" for="remember">Recordarme</label>
+        </div>
+
+        <button class="btn btn-primary w-100 py-2 btn-custom" type="submit">Entrar</button>
+      </form>
+
+      <p class="mt-4 mb-0 text-center text-body-secondary">&copy; 2017–2025 BusLink</p>
+    </div>
+  </main>
+
+  <!-- Validación Bootstrap + evitar doble submit -->
+  <script>
+    (function () {
+      const form = document.getElementById('signinForm');
+      form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        } else {
+          // Evita doble envío
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Entrando...';
+          }
+        }
+        form.classList.add('was-validated');
+      }, false);
+    })();
+  </script>
+</body>
+{% endblock %}
