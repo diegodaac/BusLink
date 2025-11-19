@@ -1,0 +1,246 @@
+{% extends "layout.html" %}
+
+{% block title %}Nueva venta - Taquilla{% endblock %}
+
+{% block customCSS %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<style>
+  .venta-header {
+    background-color: #1A6098;
+    color: white;
+    padding: 1.5rem 0;
+    margin-bottom: 1.5rem;
+  }
+  .step-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 0.5rem;
+  }
+  .step-label {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+
+<div class="venta-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="h4 mb-1">
+          <i class="bi bi-ticket-perforated"></i> Nueva venta
+        </h1>
+        <p class="mb-0">
+          Taquilla · <span class="fw-semibold">{{ current_user.nombre_completo }}</span>
+        </p>
+      </div>
+      <div class="text-end">
+        <small class="d-block">Hoy: {{ fecha_hoy }}</small>
+        <small class="text-light-50">
+          Rol: <span class="fw-semibold">{{ current_user.rol }}</span>
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container pb-4">
+  {# Mensajes flash #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-3">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'warning' if category=='message' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {# Pequeño indicador de pasos #}
+  <div class="row mb-3">
+    <div class="col-md-12">
+      <div class="d-flex flex-wrap gap-3">
+        <div class="d-flex align-items-center">
+          <span class="step-badge bg-primary text-white">1</span>
+          <span class="step-label text-muted">Datos del pasajero</span>
+        </div>
+        <div class="d-flex align-items-center">
+          <span class="step-badge bg-secondary text-white">2</span>
+          <span class="step-label text-muted">Seleccionar viaje y asiento</span>
+        </div>
+        <div class="d-flex align-items-center">
+          <span class="step-badge bg-secondary text-white">3</span>
+          <span class="step-label text-muted">Confirmar y cobrar</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('nueva_venta') }}" class="needs-validation" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="row g-3">
+      {# Columna izquierda: datos del pasajero #}
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-white">
+            <h5 class="mb-0">
+              <i class="bi bi-person-vcard"></i> Datos del pasajero
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="nombre_pasajero" class="form-label">Nombre completo</label>
+              <input type="text" class="form-control" id="nombre_pasajero" name="nombre_pasajero"
+                     placeholder="Ej: Ana López Martínez" required>
+              <div class="invalid-feedback">El nombre del pasajero es obligatorio.</div>
+            </div>
+
+            <div class="mb-3">
+              <label for="correo_pasajero" class="form-label">Correo electrónico</label>
+              <input type="email" class="form-control" id="correo_pasajero" name="correo_pasajero"
+                     placeholder="Ej: ana@example.com">
+            </div>
+
+            <div class="mb-3">
+              <label for="telefono_pasajero" class="form-label">Teléfono</label>
+              <input type="tel" class="form-control" id="telefono_pasajero" name="telefono_pasajero"
+                     placeholder="Ej: 8123456789">
+            </div>
+
+            <div class="mb-3">
+              <label for="metodo_pago" class="form-label">Método de pago</label>
+              <select class="form-select" id="metodo_pago" name="metodo_pago" required>
+                <option value="">Seleccione una opción...</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Tarjeta">Tarjeta</option>
+                <option value="Transferencia">Transferencia</option>
+              </select>
+              <div class="invalid-feedback">Seleccione un método de pago.</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {# Columna derecha: viaje, asiento y resumen #}
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white">
+            <h5 class="mb-0">
+              <i class="bi bi-bus-front"></i> Seleccionar viaje
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="viaje" class="form-label">Viaje</label>
+              <select class="form-select" id="viaje" name="id_viaje" required>
+                <option value="">Seleccione un viaje...</option>
+                {% if viajes %}
+                  {% for v in viajes %}
+                    {# Más adelante, cuando rellenemos viajes desde la BD, ajustamos estos campos #}
+                    <option value="{{ v.id_viaje }}">
+                      {{ v.salida_label }} · {{ v.origen }} → {{ v.destino }} ({{ v.autobus }})
+                    </option>
+                  {% endfor %}
+                {% else %}
+                  <option value="" disabled>No hay viajes cargados todavía.</option>
+                {% endif %}
+              </select>
+              <div class="invalid-feedback">Debe seleccionar un viaje para continuar.</div>
+            </div>
+
+            <div class="mb-3">
+              <label for="numero_asiento" class="form-label">Asiento</label>
+              <select class="form-select" id="numero_asiento" name="numero_asiento" required>
+                <option value="">Seleccione un asiento...</option>
+                {# Más adelante lo llenaremos dinámicamente según el viaje elegido #}
+              </select>
+              <div class="invalid-feedback">Seleccione un número de asiento válido.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white">
+            <h5 class="mb-0">
+              <i class="bi bi-receipt"></i> Resumen de la venta
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="text-muted">Precio estimado</span>
+              <span class="fw-semibold" id="precio_estimado">$0.00 MXN</span>
+            </div>
+            <small class="text-muted d-block mb-3">
+              Más adelante calcularemos el monto con base en la tarifa del viaje.
+            </small>
+
+            <div class="d-flex justify-content-between mb-1">
+              <span class="text-muted">Pasajero</span>
+              <span class="fw-semibold" id="resumen_pasajero">—</span>
+            </div>
+            <div class="d-flex justify-content-between mb-3">
+              <span class="text-muted">Viaje</span>
+              <span class="fw-semibold" id="resumen_viaje">—</span>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">
+                Cancelar
+              </a>
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle"></i> Confirmar venta
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Validación Bootstrap y pequeño resumen en vivo
+  (function () {
+    const form = document.querySelector('form.needs-validation');
+    form.addEventListener('submit', function (event) {
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      form.classList.add('was-validated');
+    }, false);
+
+    const nombreInput = document.getElementById('nombre_pasajero');
+    const viajeSelect = document.getElementById('viaje');
+    const resumenPasajero = document.getElementById('resumen_pasajero');
+    const resumenViaje = document.getElementById('resumen_viaje');
+
+    if (nombreInput && resumenPasajero) {
+      nombreInput.addEventListener('input', () => {
+        resumenPasajero.textContent = nombreInput.value || '—';
+      });
+    }
+    if (viajeSelect && resumenViaje) {
+      viajeSelect.addEventListener('change', () => {
+        const opt = viajeSelect.options[viajeSelect.selectedIndex];
+        resumenViaje.textContent = opt && opt.value ? opt.text : '—';
+      });
+    }
+  })();
+</script>
+
+{% endblock %}

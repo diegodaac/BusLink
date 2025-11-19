@@ -444,6 +444,36 @@ def chofer():
                             historial=historial_viajes,
                             fecha_hoy=fecha_actual)
 
+@app.route('/ventas/nueva', methods=['GET', 'POST'])
+@login_required
+def nueva_venta():
+    # Restringimos a Empleado / Admin
+    if current_user.rol not in ('Empleado', 'Admin'):
+        flash('Acceso restringido a personal de taquilla y administradores.', 'danger')
+        return redirect(url_for('home'))
+
+    if request.method == 'POST':
+        # Aquí después implementaremos:
+        # 1) Validar datos del pasajero
+        # 2) Validar viaje y asiento
+        # 3) Crear pasajero (si aplica)
+        # 4) Insertar boleto + venta
+        flash('Funcionalidad de registro de venta aún en desarrollo.', 'info')
+        return redirect(url_for('nueva_venta'))
+
+    # Por ahora, solo armamos el contexto básico para la vista
+    fecha_hoy = datetime.now().strftime("%d/%m/%Y")
+
+    # TODO: más adelante rellenaremos esto con un SELECT real de viajes
+    viajes_disponibles = []  # lista de diccionarios con viajes
+
+    return render_template(
+        'nueva_venta.html',
+        user=current_user,
+        fecha_hoy=fecha_hoy,
+        viajes=viajes_disponibles
+    )
+
 
 if __name__ == '__main__':
     app.register_error_handler(401, status_401)
