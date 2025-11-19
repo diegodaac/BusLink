@@ -913,6 +913,103 @@ def ventas_hoy():
     )
 
 
+@app.route('/viajes/proximos')
+@login_required
+def viajes_proximos():
+    """
+    Vista rápida con todos los viajes próximos (de todos los choferes),
+    ordenados por fecha de salida.
+    Solo para Admin y Empleado (taquilla).
+    """
+    if current_user.rol not in ('Admin', 'Empleado'):
+        flash('Acceso denegado. Solo el personal de taquilla o administradores pueden ver esta sección.', 'danger')
+        return redirect(url_for('home'))
+
+    try:
+        cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
+
+        sql = """
+            SELECT
+                v.id_viaje,
+                DATE_FORMAT(v.fecha_salida, '%d/%m/%Y %H:%i') AS fecha_salida,
+                DATE_FORMAT(v.fecha_llegada, '%d/%m/%Y %H:%i') AS fecha_llegada,
+
+                r.nombre AS ruta_nombre,
+
+                -- ORIGEN
+                oc.nombre AS origen_ciudad,
+                ot.nombre AS origen_terminal,
+
+                -- DESTINO
+                dc.nombre AS destino_ciudad,
+                dt.nombre AS destino_terminal,
+
+                -- AUTOBÚS Y CLASE
+                CONCAT_WS(' ', a.numero_placa, a.numero_fisico) AS autobus_identificador,
+                cs.nombre AS clase_nombre,
+
+                -- CHOFER
+                ch.nombre AS chofer_nombre,
+
+                v.estado,
+                COALESCE(ad.asientos_disponibles, a.capacidad) AS asientos_disponibles
+
+            FROM Viaje v
+            JOIN Ruta   r  ON r.id_ruta    = v.id_ruta
+            JOIN Autobus a ON a.id_autobus = v.id_autobus
+            LEFT JOIN ClaseServicio cs ON cs.id_clase = a.id_clase
+            JOIN Chofer ch  ON ch.id_chofer = v.id_chofer
+
+            -- ORIGEN: mínima orden_parada
+            JOIN Viaje_Escala ve_o
+                   ON ve_o.id_viaje = v.id_viaje
+                  AND ve_o.orden_parada = (
+                      SELECT MIN(orden_parada)
+                      FROM Viaje_Escala
+                      WHERE id_viaje = v.id_viaje
+                  )
+            JOIN Terminal ot ON ot.id_terminal = ve_o.id_terminal
+            JOIN Ciudad  oc  ON oc.id_ciudad   = ot.id_ciudad
+
+            -- DESTINO: máxima orden_parada
+            JOIN Viaje_Escala ve_d
+                   ON ve_d.id_viaje = v.id_viaje
+                  AND ve_d.orden_parada = (
+                      SELECT MAX(orden_parada)
+                      FROM Viaje_Escala
+                      WHERE id_viaje = v.id_viaje
+                  )
+            JOIN Terminal dt ON dt.id_terminal = ve_d.id_terminal
+            JOIN Ciudad  dc  ON dc.id_ciudad   = dt.id_ciudad
+
+            -- Asientos disponibles (vista)
+            LEFT JOIN vw_asientos_disponibilidad ad
+                   ON ad.id_viaje = v.id_viaje
+
+            WHERE v.fecha_salida >= NOW()
+              AND v.estado <> 'Cancelado'
+            ORDER BY v.fecha_salida ASC;
+        """
+
+        cursor.execute(sql)
+        viajes = cursor.fetchall()
+        cursor.close()
+
+    except Exception as e:
+        app.logger.error(f"Error cargando /viajes/proximos: {e}")
+        flash('Ocurrió un error al cargar los viajes próximos.', 'danger')
+        viajes = []
+
+    fecha_hoy = datetime.now().strftime("%d/%m/%Y")
+
+    return render_template(
+        'viajes_proximos.html',
+        user=current_user,
+        fecha_hoy=fecha_hoy,
+        viajes=viajes
+    )
+
+
 
 if __name__ == '__main__':
     app.register_error_handler(401, status_401)

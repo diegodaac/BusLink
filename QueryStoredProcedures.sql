@@ -20,10 +20,7 @@ END//
  
 
 -- =========================================
--- 2) Registrar venta (versión simple)
---    - Crea boleto
---    - Crea venta
---    - El trigger tr_venta_snapshot se encarga del snapshot
+-- 2) Registrar venta
 -- =========================================
 DROP PROCEDURE IF EXISTS sp_registrar_venta;
 CREATE DEFINER = `buslink_admin`@`localhost`
@@ -111,3 +108,21 @@ END//
 
 DELIMITER ;
 
+DELIMITER //
+CREATE FUNCTION fn_total_ventas_dia_empleado(
+    p_id_empleado INT,
+    p_fecha DATE
+)
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    DECLARE v_total DECIMAL(10,2);
+
+    SELECT COALESCE(SUM(monto),0) INTO v_total
+    FROM   Venta
+    WHERE  id_empleado = p_id_empleado
+      AND  DATE(fecha_venta) = p_fecha;
+
+    RETURN v_total;
+END//
+DELIMITER ;

@@ -1,0 +1,109 @@
+{% extends "layout.html" %}
+
+{% block title %}Viajes próximos{% endblock %}
+
+{% block body %}
+<div class="container py-4">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-3">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'warning' if category == 'message' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-1">
+        <i class="bi bi-calendar3"></i> Viajes próximos
+      </h1>
+      <p class="mb-0 text-muted">
+        Listado de todos los viajes programados a partir de hoy.
+      </p>
+    </div>
+    <div class="text-end">
+      <small class="text-muted d-block">Hoy: {{ fecha_hoy }}</small>
+      <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-sm mt-2">
+        <i class="bi bi-arrow-left"></i> Volver al panel
+      </a>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Salida</th>
+              <th>Llegada</th>
+              <th>Ruta</th>
+              <th>Origen</th>
+              <th>Destino</th>
+              <th>Chofer</th>
+              <th>Autobús</th>
+              <th class="text-center">Clase</th>
+              <th class="text-center">Asientos disp.</th>
+              <th class="text-center">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if viajes %}
+              {% for v in viajes %}
+                <tr>
+                  <td>{{ v.fecha_salida }}</td>
+                  <td>{{ v.fecha_llegada }}</td>
+                  <td>{{ v.ruta_nombre }}</td>
+                  <td>{{ v.origen_ciudad }} – {{ v.origen_terminal }}</td>
+                  <td>{{ v.destino_ciudad }} – {{ v.destino_terminal }}</td>
+                  <td>{{ v.chofer_nombre }}</td>
+                  <td>{{ v.autobus_identificador }}</td>
+                  <td class="text-center">
+                    {{ v.clase_nombre or 'Sin clase' }}
+                  </td>
+                  <td class="text-center">
+                    {{ v.asientos_disponibles }}
+                  </td>
+                  <td class="text-center">
+                    {% if v.estado == 'Programado' %}
+                      <span class="badge bg-warning text-dark">
+                        <i class="bi bi-clock"></i> Programado
+                      </span>
+                    {% elif v.estado == 'EnRuta' %}
+                      <span class="badge bg-info text-dark">
+                        <i class="bi bi-arrow-right-circle"></i> En ruta
+                      </span>
+                    {% elif v.estado == 'Finalizado' %}
+                      <span class="badge bg-success">
+                        <i class="bi bi-check-circle"></i> Finalizado
+                      </span>
+                    {% else %}
+                      <span class="badge bg-secondary">
+                        {{ v.estado }}
+                      </span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="10" class="text-center text-muted py-4">
+                  <i class="bi bi-inbox" style="font-size:2rem;"></i>
+                  <p class="mb-0 mt-2">No hay viajes próximos registrados.</p>
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

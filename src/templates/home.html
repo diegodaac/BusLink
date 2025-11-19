@@ -78,42 +78,6 @@
 
   {# Acciones principales #}
   <div class="row g-3 mb-4">
-    {% if current_user.rol == 'Admin' %}
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm h-100 bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #0B7ED9 100%);">
-        <div class="card-body d-flex flex-column text-white">
-          <h5 class="card-title">
-            <i class="bi bi-speedometer2"></i> Panel Admin
-          </h5>
-          <p class="card-text flex-grow-1">
-            Gestionar usuarios y configuraciones del sistema.
-          </p>
-          <a href="{{ url_for('admin') }}" class="btn btn-light mt-auto">
-            Ir al panel de Administrador
-          </a>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-
-    {% if current_user.rol == 'Chofer' %}
-    <div class="col-md-4">
-      <div class="card border-0 shadow-sm h-100 bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div class="card-body d-flex flex-column text-white">
-          <h5 class="card-title">
-            <i class="bi bi-bus-front"></i> Panel del Chofer
-          </h5>
-          <p class="card-text flex-grow-1">
-            Ver tus viajes programados, próximos destinos y historial.
-          </p>
-          <a href="{{ url_for('chofer') }}" class="btn btn-light mt-auto">
-            Ir al panel
-          </a>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-    
     <div class="col-md-{% if current_user.rol == 'Admin' %}3{% elif current_user.rol == 'Chofer' %}4{% else %}4{% endif %}">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body d-flex flex-column">
@@ -121,12 +85,25 @@
           <p class="card-text text-muted flex-grow-1">
             Registrar un nuevo boleto para un pasajero en un viaje programado.
           </p>
-          <a href="{{ url_for('nueva_venta') }}" class="btn btn-primary mt-auto">
-    Ir a nueva venta
-</a>
+          <a href="{{ url_for('nueva_venta') }}" class="btn btn-primary mt-auto">Ir a nueva venta</a>
         </div>
       </div>
     </div>
+
+  <div class="col-md-3">
+  <div class="card border-0 shadow-sm h-100">
+    <div class="card-body d-flex flex-column">
+      <h5 class="card-title">Viajes próximos</h5>
+      <p class="card-text text-muted flex-grow-1">
+        Ver todos los viajes programados para los próximos días.
+      </p>
+      <a href="{{ url_for('viajes_proximos') }}" class="btn btn-outline-primary mt-auto">
+        Ver viajes próximos
+      </a>
+    </div>
+  </div>
+</div>
+
 
 
     <div class="col-md-{% if current_user.rol == 'Admin' %}3{% elif current_user.rol == 'Chofer' %}4{% else %}4{% endif %}">
@@ -134,9 +111,11 @@
         <div class="card-body d-flex flex-column">
           <h5 class="card-title">Ventas del día</h5>
           <p class="card-text text-muted flex-grow-1">
-            Consultar las ventas realizadas hoy (por este usuario).
+            Consultar las ventas realizadas hoy por usuario.
           </p>
-          <a href="{{ url_for('ventas_hoy') }}">Ventas del día</a>
+          <a href="{{ url_for('ventas_hoy') }}" class="btn btn-primary mt-auto">
+            <i class="bi bi-cash-coin"></i> Ver ventas del día
+          </a>
         </div>
       </div>
     </div>
