@@ -1,0 +1,21 @@
+.venta-header {
+    background-color: #1A6098;
+    color: white;
+    padding: 1.5rem 0;
+    margin-bottom: 1.5rem;
+  }
+  .step-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 0.5rem;
+  }
+  .step-label {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }

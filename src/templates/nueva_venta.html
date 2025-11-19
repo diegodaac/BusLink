@@ -4,29 +4,7 @@
 
 {% block customCSS %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-<style>
-  .venta-header {
-    background-color: #1A6098;
-    color: white;
-    padding: 1.5rem 0;
-    margin-bottom: 1.5rem;
-  }
-  .step-badge {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    margin-right: 0.5rem;
-  }
-  .step-label {
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-  }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename ='css/ventas.css') }}">
 {% endblock %}
 
 {% block body %}
@@ -44,7 +22,7 @@
       </div>
       <div class="text-end">
         <small class="d-block">Hoy: {{ fecha_hoy }}</small>
-        <small class="text-light-50">
+        <small class="text-white-50">
           Rol: <span class="fw-semibold">{{ current_user.rol }}</span>
         </small>
       </div>
@@ -146,18 +124,20 @@
             <div class="mb-3">
               <label for="viaje" class="form-label">Viaje</label>
               <select class="form-select" id="viaje" name="id_viaje" required>
-                <option value="">Seleccione un viaje...</option>
-                {% if viajes %}
-                  {% for v in viajes %}
-                    {# Más adelante, cuando rellenemos viajes desde la BD, ajustamos estos campos #}
-                    <option value="{{ v.id_viaje }}">
-                      {{ v.salida_label }} · {{ v.origen }} → {{ v.destino }} ({{ v.autobus }})
-                    </option>
-                  {% endfor %}
-                {% else %}
-                  <option value="" disabled>No hay viajes cargados todavía.</option>
-                {% endif %}
-              </select>
+  <option value="">Seleccione un viaje...</option>
+  {% if viajes %}
+    {% for v in viajes %}
+      <option value="{{ v.id_viaje }}">
+  {{ v.salida_label }} · {{ v.origen }} → {{ v.destino }}
+  ({{ v.autobus }} — {{ v.clase_nombre or "Sin clase" }})
+</option>
+
+    {% endfor %}
+  {% else %}
+    <option value="" disabled>No hay viajes cargados para hoy.</option>
+  {% endif %}
+</select>
+
               <div class="invalid-feedback">Debe seleccionar un viaje para continuar.</div>
             </div>
 

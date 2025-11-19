@@ -444,35 +444,89 @@ def chofer():
                             historial=historial_viajes,
                             fecha_hoy=fecha_actual)
 
-@app.route('/ventas/nueva', methods=['GET', 'POST'])
+
+@app.route('/ventas/nueva', methods=['GET'])
 @login_required
 def nueva_venta():
-    # Restringimos a Empleado / Admin
-    if current_user.rol not in ('Empleado', 'Admin'):
-        flash('Acceso restringido a personal de taquilla y administradores.', 'danger')
+    if current_user.rol not in ('Admin', 'Empleado'):
+        flash('Esta sección es solo para personal de taquilla o administradores.', 'danger')
         return redirect(url_for('home'))
 
-    if request.method == 'POST':
-        # Aquí después implementaremos:
-        # 1) Validar datos del pasajero
-        # 2) Validar viaje y asiento
-        # 3) Crear pasajero (si aplica)
-        # 4) Insertar boleto + venta
-        flash('Funcionalidad de registro de venta aún en desarrollo.', 'info')
-        return redirect(url_for('nueva_venta'))
+    try:
+        cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
 
-    # Por ahora, solo armamos el contexto básico para la vista
+        sql = """
+        SELECT
+            v.id_viaje,
+            DATE_FORMAT(v.fecha_salida, '%d/%m %H:%i') AS salida_label,
+
+            CONCAT(oc.nombre, ' - ', ot.nombre) AS origen,
+            CONCAT(dc.nombre, ' - ', dt.nombre) AS destino,
+
+            CONCAT_WS(' ', a.numero_placa, a.numero_fisico) AS autobus,
+
+            cs.nombre AS clase_nombre
+        FROM Viaje v
+        JOIN Ruta r ON v.id_ruta = r.id_ruta
+        JOIN Autobus a ON a.id_autobus = v.id_autobus
+        LEFT JOIN ClaseServicio cs ON cs.id_clase = a.id_clase
+
+        -- Origen
+        JOIN Viaje_Escala ve_o
+          ON ve_o.id_viaje = v.id_viaje
+         AND ve_o.orden_parada = (
+             SELECT MIN(orden_parada)
+             FROM Viaje_Escala
+             WHERE id_viaje = v.id_viaje
+         )
+        JOIN Terminal ot   ON ot.id_terminal = ve_o.id_terminal
+        JOIN Ciudad  oc    ON oc.id_ciudad   = ot.id_ciudad
+
+        -- Destino
+        JOIN Viaje_Escala ve_d
+          ON ve_d.id_viaje = v.id_viaje
+         AND ve_d.orden_parada = (
+             SELECT MAX(orden_parada)
+             FROM Viaje_Escala
+             WHERE id_viaje = v.id_viaje
+         )
+        JOIN Terminal dt   ON dt.id_terminal = ve_d.id_terminal
+        JOIN Ciudad  dc    ON dc.id_ciudad   = dt.id_ciudad
+
+        WHERE DATE(v.fecha_salida) = CURDATE()
+          AND v.estado <> 'Cancelado'
+        ORDER BY v.fecha_salida;
+        """
+
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+        cursor.close()
+
+        viajes = []
+        for row in rows:
+            viajes.append({
+                'id_viaje': row['id_viaje'],
+                'salida_label': row['salida_label'],
+                'origen': row['origen'],
+                'destino': row['destino'],
+                'autobus': row['autobus'],
+                'clase_nombre': row['clase_nombre'],
+            })
+
+    except Exception as e:
+        app.logger.error(f"Error cargando /ventas/nueva: {e}")
+        flash('Ocurrió un error al cargar los viajes disponibles.', 'danger')
+        viajes = []
+
     fecha_hoy = datetime.now().strftime("%d/%m/%Y")
-
-    # TODO: más adelante rellenaremos esto con un SELECT real de viajes
-    viajes_disponibles = []  # lista de diccionarios con viajes
 
     return render_template(
         'nueva_venta.html',
         user=current_user,
         fecha_hoy=fecha_hoy,
-        viajes=viajes_disponibles
+        viajes=viajes
     )
+
 
 
 if __name__ == '__main__':
