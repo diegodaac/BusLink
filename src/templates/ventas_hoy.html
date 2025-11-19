@@ -1,0 +1,131 @@
+{% extends "layout.html" %}
+
+{% block title %}Ventas del día por empleado{% endblock %}
+
+{% block customCSS %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<style>
+  .ventas-header {
+      background: linear-gradient(135deg, #0B7ED9 0%, #00c6ff 100%);
+      color: white;
+      padding: 1.5rem 0;
+      margin-bottom: 1.5rem;
+  }
+  .stat-card {
+      border: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+
+<div class="ventas-header">
+  <div class="container">
+    <h1 class="h4 mb-1"><i class="bi bi-graph-up"></i> Ventas del día por empleado</h1>
+    <p class="mb-0">Fecha: <strong>{{ fecha_hoy }}</strong></p>
+  </div>
+</div>
+
+<div class="container mb-5">
+
+  {# Mensajes flash #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-3">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'warning' if category=='message' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Resumen general -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card stat-card">
+        <div class="card-body text-center">
+          <i class="bi bi-ticket-perforated" style="font-size:2rem;"></i>
+          <h3 class="mt-2 mb-0">{{ total_boletos }}</h3>
+          <small class="text-muted">Boletos vendidos hoy</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card stat-card">
+        <div class="card-body text-center">
+          <i class="bi bi-cash-coin" style="font-size:2rem;"></i>
+          <h3 class="mt-2 mb-0">${{ "%.2f"|format(total_general) }} MXN</h3>
+          <small class="text-muted">Monto total del día</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card stat-card">
+        <div class="card-body text-center">
+          <i class="bi bi-people" style="font-size:2rem;"></i>
+          <h3 class="mt-2 mb-0">{{ resumen|length }}</h3>
+          <small class="text-muted">Empleados con ventas hoy</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla por empleado -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">
+        <i class="bi bi-person-lines-fill"></i> Detalle por empleado
+      </h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Empleado</th>
+              <th class="text-center">Boletos vendidos</th>
+              <th class="text-end">Total ventas</th>
+              <th class="text-end">Efectivo</th>
+              <th class="text-end">Tarjeta</th>
+              <th class="text-end">Transferencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if resumen %}
+              {% for r in resumen %}
+              <tr>
+                <td>{{ r.empleado_nombre or 'Sin empleado asociado' }}</td>
+                <td class="text-center">{{ r.num_ventas }}</td>
+                <td class="text-end">${{ "%.2f"|format(r.total_ventas) }}</td>
+                <td class="text-end">${{ "%.2f"|format(r.total_efectivo) }}</td>
+                <td class="text-end">${{ "%.2f"|format(r.total_tarjeta) }}</td>
+                <td class="text-end">${{ "%.2f"|format(r.total_transferencia) }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                  <i class="bi bi-inbox" style="font-size:2rem;"></i>
+                  <p class="mb-0 mt-2">No se han registrado ventas en el día de hoy.</p>
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left-circle"></i> Volver al dashboard
+    </a>
+  </div>
+
+</div>
+
+{% endblock %}

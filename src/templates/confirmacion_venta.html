@@ -1,0 +1,114 @@
+{% extends "layout.html" %}
+
+{% block title %}Confirmación de Venta{% endblock %}
+
+{% block customCSS %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<style>
+  .confirm-header {
+    background: linear-gradient(135deg, #0B7ED9 0%, #667eea 100%);
+    padding: 2rem 0;
+    color: white;
+    margin-bottom: 2rem;
+  }
+  .ticket-card {
+    border-left: 4px solid #0B7ED9;
+  }
+  .asiento-circle {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    background: #0B7ED9;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.25rem;
+    font-weight: bold;
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+
+<div class="confirm-header">
+  <div class="container">
+    <h1 class="h3 mb-0">
+      <i class="bi bi-check-circle-fill"></i> Venta realizada con éxito
+    </h1>
+    <p class="mb-0">Folio del boleto: <strong>{{ boleto.id_boleto }}</strong></p>
+  </div>
+</div>
+
+<div class="container mb-5">
+
+  <!-- Tarjeta principal -->
+  <div class="card shadow-sm ticket-card mb-4">
+    <div class="card-body">
+      <div class="row g-4 align-items-center">
+
+        <div class="col-md-2 text-center">
+          <div class="asiento-circle">
+            {{ boleto.numero_asiento }}
+          </div>
+          <small class="text-muted d-block mt-2">Asiento</small>
+        </div>
+
+        <div class="col-md-5">
+          <h5 class="mb-1">
+            {{ boleto.origen_ciudad }} → {{ boleto.destino_ciudad }}
+          </h5>
+          <p class="mb-0 text-muted">
+            Salida: {{ boleto.salida }} <br>
+            Llegada: {{ boleto.llegada }}
+          </p>
+          <span class="badge bg-primary mt-2">
+            {{ boleto.clase_nombre or "Clase estándar" }}
+          </span>
+        </div>
+
+        <div class="col-md-3">
+          <p class="mb-1 fw-semibold">Pasajero:</p>
+          <p class="mb-0">{{ boleto.pasajero_nombre }}</p>
+          <small class="text-muted">
+            {{ boleto.pasajero_correo or "Sin correo" }} <br>
+            {{ boleto.pasajero_telefono or "Sin teléfono" }}
+          </small>
+        </div>
+
+        <div class="col-md-2 text-end">
+          <p class="text-muted mb-1">Total pagado</p>
+          <h3 class="mb-0">${{ boleto.precio_total }} MXN</h3>
+          <small class="text-muted">Incluye impuestos</small>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Detalles adicionales -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="mb-3">
+        <i class="bi bi-bus-front-fill"></i> Datos del autobús
+      </h5>
+      <p class="mb-0">
+        Placa: <strong>{{ boleto.numero_placa }}</strong><br>
+        Número físico: <strong>{{ boleto.numero_fisico }}</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- Botones -->
+  <div class="d-flex justify-content-end gap-2">
+    <a href="{{ url_for('nueva_venta') }}" class="btn btn-outline-primary">
+      <i class="bi bi-plus-circle"></i> Nueva venta
+    </a>
+    <a href="{{ url_for('home') }}" class="btn btn-secondary">
+      Volver al inicio
+    </a>
+  </div>
+
+</div>
+
+{% endblock %}

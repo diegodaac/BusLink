@@ -128,30 +128,15 @@
       </div>
     </div>
 
-    <div class="col-md-{% if current_user.rol == 'Admin' %}3{% elif current_user.rol == 'Chofer' %}4{% else %}4{% endif %}">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body d-flex flex-column">
-          <h5 class="card-title">Consultar disponibilidad</h5>
-          <p class="card-text text-muted flex-grow-1">
-            Buscar viajes por origen, destino y fecha, y revisar asientos disponibles.
-          </p>
-          <a href="#" class="btn btn-outline-primary mt-auto">
-            Ver disponibilidad
-          </a>
-        </div>
-      </div>
-    </div>
 
     <div class="col-md-{% if current_user.rol == 'Admin' %}3{% elif current_user.rol == 'Chofer' %}4{% else %}4{% endif %}">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body d-flex flex-column">
           <h5 class="card-title">Ventas del día</h5>
           <p class="card-text text-muted flex-grow-1">
-            Consultar las ventas realizadas hoy (por este usuario o por la taquilla).
+            Consultar las ventas realizadas hoy (por este usuario).
           </p>
-          <a href="#" class="btn btn-outline-secondary mt-auto">
-            Ver ventas del día
-          </a>
+          <a href="{{ url_for('ventas_hoy') }}">Ventas del día</a>
         </div>
       </div>
     </div>
