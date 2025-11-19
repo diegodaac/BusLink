@@ -239,21 +239,60 @@ def create_user():
 @login_required
 @admin_required
 def update_user(id_usuario):
+    # Datos básicos
     nombre_completo = request.form.get('nombre_completo', '').strip()
     email = request.form.get('email', '').strip()
     rol = request.form.get('rol', 'Empleado')
     activo = int(request.form.get('activo', 1))
-    
+
+    # Teléfono (Empleado)
+    telefono_empleado = request.form.get('telefono_empleado', '').strip() or None
+
     if not nombre_completo or not email:
         flash('Nombre y email son obligatorios.', 'danger')
         return redirect(url_for('admin'))
-    
-    if ModelUser.update_user(db, id_usuario, nombre_completo, email, rol, activo):
-        flash('Usuario actualizado exitosamente.', 'success')
+
+    # Si el rol es Chofer, recogemos los campos extra
+    chofer_data = None
+    if rol == 'Chofer':
+        chofer_data = {
+            'rfc':               request.form.get('rfc', '').strip() or None,
+            'curp':              request.form.get('curp', '').strip() or None,
+            'nss':               request.form.get('nss', '').strip() or None,
+            'direccion':         request.form.get('direccion', '').strip() or None,
+            'fecha_ingreso':     request.form.get('fecha_ingreso') or None,
+            'licencia':          request.form.get('licencia', '').strip() or None,
+            'licencia_tipo':     request.form.get('licencia_tipo', '').strip() or None,
+            'licencia_expira':   request.form.get('licencia_expira') or None,
+            'anios_experiencia': request.form.get('anios_experiencia', '').strip() or 0,
+            'notas':             request.form.get('notas', '').strip() or None
+        }
+
+        # Normalizar años de experiencia a int
+        try:
+            chofer_data['anios_experiencia'] = int(chofer_data['anios_experiencia'])
+        except (ValueError, TypeError):
+            chofer_data['anios_experiencia'] = 0
+
+    # Llamamos al modelo para hacer el UPDATE en cascada
+    ok = ModelUser.update_user_full(
+        db,
+        id_usuario=id_usuario,
+        nombre_completo=nombre_completo,
+        email=email,
+        rol=rol,
+        activo=activo,
+        telefono_empleado=telefono_empleado,
+        chofer_data=chofer_data
+    )
+
+    if ok:
+        flash('Usuario actualizado correctamente.', 'success')
     else:
         flash('Error al actualizar el usuario.', 'danger')
-    
+
     return redirect(url_for('admin'))
+
 
 @app.route('/admin/toggle_user/<int:id_usuario>', methods=['POST'])
 @login_required

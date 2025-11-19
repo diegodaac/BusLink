@@ -241,34 +241,111 @@
                                     <form method="POST" action="{{ url_for('update_user', id_usuario=usr.id_usuario) }}">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <div class="modal-body">
-                                            <div class="mb-3">
-                                                <label class="form-label">Nombre Completo</label>
-                                                <input type="text" class="form-control" name="nombre_completo" 
-                                                       value="{{ usr.nombre_completo }}" required>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label">Email</label>
-                                                <input type="email" class="form-control" name="email" 
-                                                       value="{{ usr.email }}" required>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label">Rol</label>
-                                                <select class="form-select" name="rol" required>
-                                                    <option value="Admin" {% if usr.rol == 'Admin' %}selected{% endif %}>Admin</option>
-                                                    <option value="Empleado" {% if usr.rol == 'Empleado' %}selected{% endif %}>Empleado</option>
-                                                    <option value="Chofer" {% if usr.rol == 'Chofer' %}selected{% endif %}>Chofer</option>
-                                                    <option value="Mecanico" {% if usr.rol == 'Mecanico' %}selected{% endif %}>Mecánico</option>
-                                                    <option value="Cliente" {% if usr.rol == 'Cliente' %}selected{% endif %}>Cliente</option>
-                                                </select>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label">Estado</label>
-                                                <select class="form-select" name="activo" required>
-                                                    <option value="1" {% if usr.activo == 1 %}selected{% endif %}>Activo</option>
-                                                    <option value="0" {% if usr.activo == 0 %}selected{% endif %}>Inactivo</option>
-                                                </select>
-                                            </div>
-                                        </div>
+    <!-- Datos básicos de acceso -->
+    <h6 class="mb-3"><i class="bi bi-person-circle"></i> Datos de acceso</h6>
+    <div class="mb-3">
+        <label class="form-label">Nombre Completo</label>
+        <input type="text" class="form-control" name="nombre_completo"
+               value="{{ usr.nombre_completo }}" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" name="email"
+               value="{{ usr.email }}" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Rol</label>
+        <select class="form-select" name="rol" required>
+            <option value="Admin"   {% if usr.rol == 'Admin' %}selected{% endif %}>Admin</option>
+            <option value="Empleado"{% if usr.rol == 'Empleado' %}selected{% endif %}>Empleado</option>
+            <option value="Chofer"  {% if usr.rol == 'Chofer' %}selected{% endif %}>Chofer</option>
+            <option value="Mecanico"{% if usr.rol == 'Mecanico' %}selected{% endif %}>Mecánico</option>
+            <option value="Cliente" {% if usr.rol == 'Cliente' %}selected{% endif %}>Cliente</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Estado</label>
+        <select class="form-select" name="activo" required>
+            <option value="1" {% if usr.activo == 1 %}selected{% endif %}>Activo</option>
+            <option value="0" {% if usr.activo == 0 %}selected{% endif %}>Inactivo</option>
+        </select>
+    </div>
+
+    <hr>
+
+    <!-- Datos de empleado -->
+    <h6 class="mb-3"><i class="bi bi-briefcase"></i> Datos de empleado</h6>
+    <div class="mb-3">
+        <label class="form-label">Teléfono</label>
+        <input type="tel" class="form-control" name="telefono_empleado"
+               value="{{ usr.telefono or '' }}" placeholder="Ej: 8123456789">
+    </div>
+
+    {% if usr.rol == 'Chofer' %}
+    <hr>
+    <!-- Datos específicos de chofer -->
+    <h6 class="mb-3"><i class="bi bi-bus-front"></i> Datos de chofer</h6>
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label">RFC</label>
+            <input type="text" class="form-control" name="rfc"
+                   maxlength="13" value="{{ usr.rfc or '' }}">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">CURP</label>
+            <input type="text" class="form-control" name="curp"
+                   maxlength="18" value="{{ usr.curp or '' }}">
+        </div>
+    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label">NSS</label>
+            <input type="text" class="form-control" name="nss"
+                   maxlength="15" value="{{ usr.nss or '' }}">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Dirección</label>
+            <input type="text" class="form-control" name="direccion"
+                   value="{{ usr.direccion or '' }}">
+        </div>
+    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Fecha de ingreso</label>
+            <input type="date" class="form-control" name="fecha_ingreso"
+                   value="{{ usr.fecha_ingreso or '' }}">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Licencia</label>
+            <input type="text" class="form-control" name="licencia"
+                   value="{{ usr.licencia or '' }}">
+        </div>
+    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <label class="form-label">Tipo de licencia</label>
+            <input type="text" class="form-control" name="licencia_tipo"
+                   value="{{ usr.licencia_tipo or '' }}">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Fecha de expiración</label>
+            <input type="date" class="form-control" name="licencia_expira"
+                   value="{{ usr.licencia_expira or '' }}">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Años de experiencia</label>
+            <input type="number" class="form-control" name="anios_experiencia"
+                   min="0" value="{{ usr.anios_experiencia or 0 }}">
+        </div>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Notas</label>
+        <textarea class="form-control" name="notas" rows="2"
+                  placeholder="Información adicional sobre el chofer">{{ usr.notas or '' }}</textarea>
+    </div>
+    {% endif %}
+</div>
+
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                                             <button type="submit" class="btn btn-primary">
