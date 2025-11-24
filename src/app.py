@@ -705,7 +705,8 @@ def nueva_venta():
                 JOIN Ciudad  dc  ON dc.id_ciudad   = dt.id_ciudad
 
                 WHERE DATE(v.fecha_salida) = CURDATE()
-                  AND v.estado <> 'Cancelado'
+                  AND v.fecha_salida >= NOW()   
+                  AND v.estado = 'Programado' 
                 ORDER BY v.fecha_salida ASC;
             """
 
@@ -717,7 +718,7 @@ def nueva_venta():
             for row in rows:
                 viajes.append({
                     'id_viaje': row['id_viaje'],
-                    'salida_label': row['salida_label'],   # ya viene bonito: 19/11/2025 08:30
+                    'salida_label': row['salida_label'],
                     'origen': row['origen'],
                     'destino': row['destino'],
                     'autobus': row['autobus'],
@@ -740,12 +741,12 @@ def nueva_venta():
     # ================== POST: registrar venta ==================
     try:
         # 1) Datos del formulario
-        nombre_pasajero   = request.form.get('nombre_pasajero', '').strip()
-        correo_pasajero   = request.form.get('correo_pasajero', '').strip() or None
+        nombre_pasajero = request.form.get('nombre_pasajero', '').strip()
+        correo_pasajero = request.form.get('correo_pasajero', '').strip() or None
         telefono_pasajero = request.form.get('telefono_pasajero', '').strip() or None
-        metodo_pago       = request.form.get('metodo_pago', '')
-        id_viaje          = request.form.get('id_viaje', '')
-        numero_asiento    = request.form.get('numero_asiento', '')
+        metodo_pago = request.form.get('metodo_pago', '')
+        id_viaje = request.form.get('id_viaje', '')
+        numero_asiento = request.form.get('numero_asiento', '')
 
         if not nombre_pasajero or not id_viaje or not numero_asiento or not metodo_pago:
             flash('Faltan datos obligatorios para registrar la venta.', 'danger')
@@ -754,42 +755,60 @@ def nueva_venta():
         id_viaje = int(id_viaje)
         numero_asiento = int(numero_asiento)
 
-        # 2) Simulación de pago con tarjeta (solo log en consola)
+        # 2) Validar viaje
+        cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("""
+            SELECT fecha_salida, estado
+            FROM Viaje
+            WHERE id_viaje = %s
+        """, (id_viaje,))
+        v_row = cursor.fetchone()
+
+        if not v_row:
+            cursor.close()
+            flash('El viaje seleccionado ya no existe.', 'danger')
+            return redirect(url_for('nueva_venta'))
+
+        fecha_salida = v_row['fecha_salida']
+        estado_viaje = v_row['estado']
+
+        cursor.execute("SELECT NOW() AS ahora")
+        ahora = cursor.fetchone()['ahora']
+
+        if estado_viaje == 'Cancelado' or fecha_salida <= ahora:
+            cursor.close()
+            flash('No es posible registrar la venta: el viaje ya salió o fue cancelado.', 'danger')
+            return redirect(url_for('nueva_venta'))
+
+        # 3) Simulación de pago (solo log)
         if metodo_pago == 'Tarjeta':
             tarjeta_numero = request.form.get('tarjeta_numero', '')
             tarjeta_nombre = request.form.get('tarjeta_nombre', '')
             tarjeta_expira = request.form.get('tarjeta_expira', '')
-            tarjeta_cvv    = request.form.get('tarjeta_cvv', '')
 
             pago_payload = {
-                "monto": 0,  # se actualiza después
+                "monto": 0,
                 "pasajero": nombre_pasajero,
                 "asiento": numero_asiento,
                 "id_viaje": id_viaje,
                 "tarjeta": {
-                    "numero": tarjeta_numero[-4:],  # solo últimos 4
+                    "numero": tarjeta_numero[-4:],
                     "nombre": tarjeta_nombre,
                     "expira": tarjeta_expira,
                 }
             }
             print("=== PAGO TARJETA (SIMULACIÓN) ===")
             print(pago_payload)
-            print("===================================")
 
-        cursor = db.connection.cursor()
-
-        # 3) Buscar o crear PASAJERO
+        # 4) Pasajero
         id_pasajero = None
         if correo_pasajero:
             cursor.execute("""
-                SELECT id_pasajero 
-                FROM Pasajero 
-                WHERE correo = %s 
-                LIMIT 1
+                SELECT id_pasajero FROM Pasajero WHERE correo = %s LIMIT 1
             """, (correo_pasajero,))
             row = cursor.fetchone()
             if row:
-                id_pasajero = row[0]
+                id_pasajero = row['id_pasajero']
 
         if not id_pasajero:
             cursor.execute("""
@@ -798,47 +817,35 @@ def nueva_venta():
             """, (nombre_pasajero, correo_pasajero, telefono_pasajero))
             id_pasajero = cursor.lastrowid
 
-        # 4) Calcular monto del boleto (lógico provisional)
+        # 5) Precio (temporal)
         precio_base = 600.00
         impuesto = round(precio_base * 0.05, 2)
         precio_total = precio_base + impuesto
 
         if metodo_pago == 'Tarjeta':
             pago_payload["monto"] = float(precio_total)
-            print("=== PAGO TARJETA (SIMULACIÓN) ===")
             print(pago_payload)
-            print("===================================")
 
-        # 5) Insertar BOLETO primero (porque Venta referencia a Boleto)
+        # 6) Insertar boleto
         cursor.execute("""
             INSERT INTO Boleto (id_viaje, id_pasajero, numero_asiento, estado, precio_total)
             VALUES (%s, %s, %s, 'Pagado', %s)
         """, (id_viaje, id_pasajero, numero_asiento, precio_total))
         id_boleto = cursor.lastrowid
 
-        # 6) Obtener id_empleado del usuario actual (si existe)
+        # 7) Empleado
         cursor.execute("""
-            SELECT id_empleado
-            FROM Usuario
-            WHERE id_usuario = %s
+            SELECT id_empleado FROM Usuario WHERE id_usuario = %s
         """, (current_user.id_usuario,))
         row_emp = cursor.fetchone()
-        id_empleado = row_emp[0] if row_emp and row_emp[0] is not None else None
+        id_empleado = row_emp['id_empleado'] if row_emp else None
 
-        # 7) Insertar VENTA (nota: NO va id_viaje, va id_boleto)
+        # 8) Venta
         cursor.execute("""
             INSERT INTO Venta (id_boleto, id_empleado, id_cliente, metodo_pago, monto, nota)
             VALUES (%s, %s, NULL, %s, %s, %s)
-        """, (
-            id_boleto,
-            id_empleado,
-            metodo_pago,
-            precio_total,
-            'Venta registrada desde módulo de taquilla'
-        ))
-        id_venta = cursor.lastrowid
-
-        # 8) NO insertes Venta_Detalle aquí: el trigger tr_venta_snapshot lo hace AUTOMÁTICAMENTE
+        """, (id_boleto, id_empleado, metodo_pago, precio_total,
+              'Venta registrada desde módulo de taquilla'))
 
         db.connection.commit()
         cursor.close()
