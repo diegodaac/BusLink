@@ -3,29 +3,7 @@
 {% block title %}Panel del Chofer - BusLink{% endblock %}
 
 {% block customCSS %}
-<style>
-    .chofer-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-
-    .stat-card {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border: none;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    }
-
-    .proximo-viaje-card {
-        border-left: 5px solid #667eea;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename ='css/chofer.css') }}">
 {% endblock %}
 
 {% block body %}

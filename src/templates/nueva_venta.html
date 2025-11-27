@@ -106,43 +106,60 @@
                 <option value="Transferencia">Transferencia</option>
               </select>
               <div class="invalid-feedback">Seleccione un método de pago.</div>
-                <div id="tarjetaModule" style="display:none;">
-  <hr>
-  <h6><i class="bi bi-credit-card"></i> Pago con tarjeta</h6>
 
-  <div class="mb-3">
-    <label class="form-label">Número de tarjeta</label>
-    <input type="text" maxlength="16" class="form-control" id="card_number"
-           placeholder="1234123412341234">
-  </div>
+              <div id="tarjetaModule" style="display:none;">
+                <hr>
+                <h6><i class="bi bi-credit-card"></i> Pago con tarjeta</h6>
 
-  <div class="row g-3 mb-3">
-    <div class="col-md-4">
-      <label class="form-label">Mes</label>
-      <input type="number" min="1" max="12" class="form-control" id="card_month"
-             placeholder="MM">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Año</label>
-      <input type="number" min="24" max="40" class="form-control" id="card_year"
-             placeholder="AA">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">CVV</label>
-      <input type="password" maxlength="4" class="form-control" id="card_cvv"
-             placeholder="***">
-    </div>
-  </div>
+                <div class="mb-3 position-relative">
+                  <label class="form-label">Número de tarjeta</label>
 
-  <div class="mb-3">
-    <label class="form-label">Titular</label>
-    <input type="text" class="form-control" id="card_holder"
-           placeholder="Juan Perez">
-  </div>
-</div>
+                  <i class="bi bi-credit-card-fill text-secondary position-absolute"
+                     style="right: 15px; top: 48px; font-size: 1.3rem;"></i>
+
+                  <input type="text"
+                         class="form-control"
+                         id="card_number"
+                         name="tarjeta_numero"
+                         maxlength="19"
+                         placeholder="XXXX-XXXX-XXXX-XXXX"
+                         autocomplete="off">
+                </div>
+
+                <div class="row g-3 mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Mes</label>
+                    <input type="number" min="1" max="12"
+                           class="form-control"
+                           id="card_month">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Año</label>
+                    <input type="number" min="24" max="40"
+                           class="form-control"
+                           id="card_year">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">CVV</label>
+                    <input type="password" maxlength="4"
+                           class="form-control"
+                           id="card_cvv">
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Titular</label>
+                  <input type="text"
+                         class="form-control"
+                         id="card_holder"
+                         name="tarjeta_nombre">
+                </div>
+
+                {# Campo oculto para la fecha de expiración combinada #}
+                <input type="hidden" id="tarjeta_expira" name="tarjeta_expira">
+              </div>
 
             </div>
-
           </div>
         </div>
       </div>
@@ -159,29 +176,26 @@
             <div class="mb-3">
               <label for="viaje" class="form-label">Viaje</label>
               <select class="form-select" id="viaje" name="id_viaje" required>
-  <option value="">Seleccione un viaje...</option>
-  {% if viajes %}
-    {% for v in viajes %}
-      <option value="{{ v.id_viaje }}">
-        {{ v.salida_label }} · {{ v.origen }} → {{ v.destino }}
-        ({{ v.autobus }} — {{ v.clase_nombre or "Sin clase" }})
-      </option>
-    {% endfor %}
-  {% else %}
-    <option value="" disabled>No hay viajes cargados para hoy.</option>
-  {% endif %}
-</select>
-
-
+                <option value="">Seleccione un viaje...</option>
+                {% if viajes %}
+                  {% for v in viajes %}
+                    <option value="{{ v.id_viaje }}">
+                      {{ v.salida_label }} · {{ v.origen }} → {{ v.destino }}
+                      ({{ v.autobus }} — {{ v.clase_nombre or "Sin clase" }})
+                    </option>
+                  {% endfor %}
+                {% else %}
+                  <option value="" disabled>No hay viajes cargados para hoy.</option>
+                {% endif %}
+              </select>
               <div class="invalid-feedback">Debe seleccionar un viaje para continuar.</div>
             </div>
 
             <div class="mb-3">
               <label for="numero_asiento" class="form-label">Asiento</label>
               <select class="form-select" id="numero_asiento" name="numero_asiento" required>
-  <option value="">Seleccione un asiento...</option>
-</select>
-
+                <option value="">Seleccione un asiento...</option>
+              </select>
               <div class="invalid-feedback">Seleccione un número de asiento válido.</div>
             </div>
           </div>
@@ -220,168 +234,202 @@
 </div>
 
 <script>
-  // Validación Bootstrap y resumen en vivo
-  (function () {
-    const form = document.querySelector('form.needs-validation');
-    form.addEventListener('submit', function (event) {
-      if (!form.checkValidity()) {
-        event.preventDefault();
-        event.stopPropagation();
+document.addEventListener('DOMContentLoaded', function () {
+  const form            = document.querySelector('form.needs-validation');
+  const nombreInput     = document.getElementById('nombre_pasajero');
+  const viajeSelect     = document.getElementById('viaje');
+  const resumenPasajero = document.getElementById('resumen_pasajero');
+  const resumenViaje    = document.getElementById('resumen_viaje');
+  const asientoSelect   = document.getElementById('numero_asiento');
+
+  const metodoPago      = document.getElementById("metodo_pago");
+  const tarjetaModule   = document.getElementById("tarjetaModule");
+  const cardNumberInput = document.getElementById("card_number");
+  const cardMonthInput  = document.getElementById("card_month");
+  const cardYearInput   = document.getElementById("card_year");
+  const cardCVVInput    = document.getElementById("card_cvv");
+  const cardHolderInput = document.getElementById("card_holder");
+
+  // 1) Resumen en vivo
+  if (nombreInput && resumenPasajero) {
+    nombreInput.addEventListener('input', function () {
+      resumenPasajero.textContent = nombreInput.value || '—';
+    });
+  }
+
+  if (viajeSelect && resumenViaje) {
+    viajeSelect.addEventListener('change', function () {
+      const opt = viajeSelect.options[viajeSelect.selectedIndex];
+      resumenViaje.textContent = (opt && opt.value) ? opt.text : '—';
+    });
+  }
+
+  // 2) Carga dinámica de asientos
+  if (viajeSelect && asientoSelect) {
+    viajeSelect.addEventListener('change', function () {
+      const idViaje = this.value;
+
+      asientoSelect.innerHTML = '';
+      const optDefault = document.createElement('option');
+      optDefault.value = '';
+      optDefault.textContent = idViaje ? 'Cargando asientos...' : 'Seleccione un asiento...';
+      asientoSelect.appendChild(optDefault);
+
+      if (!idViaje) {
+        return;
       }
-      form.classList.add('was-validated');
-    }, false);
 
-    const nombreInput = document.getElementById('nombre_pasajero');
-    const viajeSelect = document.getElementById('viaje');
-    const resumenPasajero = document.getElementById('resumen_pasajero');
-    const resumenViaje = document.getElementById('resumen_viaje');
-    const asientoSelect = document.getElementById('numero_asiento');
+      fetch(`/api/viajes/${idViaje}/asientos`)
+        .then(resp => resp.json())
+        .then(data => {
+          asientoSelect.innerHTML = '';
+          const optInicio = document.createElement('option');
+          optInicio.value = '';
+          optInicio.textContent = 'Seleccione un asiento...';
+          asientoSelect.appendChild(optInicio);
 
-    if (nombreInput && resumenPasajero) {
-      nombreInput.addEventListener('input', () => {
-        resumenPasajero.textContent = nombreInput.value || '—';
-      });
-    }
-
-    if (viajeSelect && resumenViaje) {
-      viajeSelect.addEventListener('change', () => {
-        const opt = viajeSelect.options[viajeSelect.selectedIndex];
-        resumenViaje.textContent = opt && opt.value ? opt.text : '—';
-      });
-    }
-
-    // === CARGA DINÁMICA DE ASIENTOS SEGÚN VIAJE ===
-    if (viajeSelect && asientoSelect) {
-      viajeSelect.addEventListener('change', function () {
-        const idViaje = this.value;
-
-        // Reiniciar el select de asientos
-        asientoSelect.innerHTML = '';
-        const optDefault = document.createElement('option');
-        optDefault.value = '';
-        optDefault.textContent = idViaje ? 'Cargando asientos...' : 'Seleccione un asiento...';
-        asientoSelect.appendChild(optDefault);
-
-        if (!idViaje) {
-          return;  // no hay viaje seleccionado
-        }
-
-        fetch(`/api/viajes/${idViaje}/asientos`)
-          .then(resp => resp.json())
-          .then(data => {
-            asientoSelect.innerHTML = '';
-            const optInicio = document.createElement('option');
-            optInicio.value = '';
-            optInicio.textContent = 'Seleccione un asiento...';
-            asientoSelect.appendChild(optInicio);
-
-            if (data.error) {
-              const optErr = document.createElement('option');
-              optErr.value = '';
-              optErr.disabled = true;
-              optErr.textContent = 'Error al cargar asientos';
-              asientoSelect.appendChild(optErr);
-              console.error(data.error);
-              return;
-            }
-
-            const libres = data.asientos_libres || [];
-            if (libres.length === 0) {
-              const optNo = document.createElement('option');
-              optNo.value = '';
-              optNo.disabled = true;
-              optNo.textContent = 'No hay asientos disponibles';
-              asientoSelect.appendChild(optNo);
-              return;
-            }
-
-            libres.forEach(num => {
-              const opt = document.createElement('option');
-              opt.value = num;
-              opt.textContent = num;
-              asientoSelect.appendChild(opt);
-            });
-          })
-          .catch(err => {
-            console.error('Error fetch asientos:', err);
-            asientoSelect.innerHTML = '';
+          if (data.error) {
             const optErr = document.createElement('option');
             optErr.value = '';
             optErr.disabled = true;
             optErr.textContent = 'Error al cargar asientos';
             asientoSelect.appendChild(optErr);
+            console.error(data.error);
+            return;
+          }
+
+          const libres = data.asientos_libres || [];
+          if (libres.length === 0) {
+            const optNo = document.createElement('option');
+            optNo.value = '';
+            optNo.disabled = true;
+            optNo.textContent = 'No hay asientos disponibles';
+            asientoSelect.appendChild(optNo);
+            return;
+          }
+
+          libres.forEach(function (num) {
+            const opt = document.createElement('option');
+            opt.value = num;
+            opt.textContent = num;
+            asientoSelect.appendChild(opt);
           });
-      });
-    }
-  })();
-
-  const metodoPago = document.getElementById("metodo_pago");
-const tarjetaModule = document.getElementById("tarjetaModule");
-
-metodoPago.addEventListener("change", function() {
-  tarjetaModule.style.display = metodoPago.value === "Tarjeta" ? "" : "none";
-});
-
-form.addEventListener("submit", function(event) {
-
-  // Validación general del formulario
-  if (!form.checkValidity()) {
-    event.preventDefault();
-    event.stopPropagation();
-    form.classList.add('was-validated');
-    return;
+        })
+        .catch(function (err) {
+          console.error('Error fetch asientos:', err);
+          asientoSelect.innerHTML = '';
+          const optErr = document.createElement('option');
+          optErr.value = '';
+          optErr.disabled = true;
+          optErr.textContent = 'Error al cargar asientos';
+          asientoSelect.appendChild(optErr);
+        });
+    });
   }
 
-  // SI EL MÉTODO ES TARJETA → VALIDAR Y ENVIAR JSON SIMULADO
-  if (metodoPago.value === "Tarjeta") {
-
-    let cardNum = document.getElementById("card_number").value.trim();
-    let cardMonth = document.getElementById("card_month").value.trim();
-    let cardYear = document.getElementById("card_year").value.trim();
-    let cardCVV = document.getElementById("card_cvv").value.trim();
-    let cardHolder = document.getElementById("card_holder").value.trim();
-
-    // Validaciones básicas
-    if (cardNum.length !== 16 || isNaN(cardNum)) {
-      alert("Número de tarjeta inválido");
-      event.preventDefault();
-      return;
-    }
-    if (cardMonth < 1 || cardMonth > 12) {
-      alert("Mes inválido");
-      event.preventDefault();
-      return;
-    }
-    if (cardCVV.length < 3 || cardCVV.length > 4) {
-      alert("CVV inválido");
-      event.preventDefault();
-      return;
-    }
-
-    // Crear el JSON simulado
-    const pagoJSON = {
-      metodo: "tarjeta",
-      tarjeta: {
-        numero: cardNum,
-        mes: cardMonth,
-        año: cardYear,
-        cvv: cardCVV,
-        titular: cardHolder
-      },
-      timestamp: new Date().toISOString()
-    };
-
-    // Mostrar en consola para la maestra
-    console.log("📦 JSON enviado al sistema externo:", pagoJSON);
-
-    // Opcional: Mandarlo al backend en un hidden input
-    let hidden = document.createElement("input");
-    hidden.type = "hidden";
-    hidden.name = "pago_json";
-    hidden.value = JSON.stringify(pagoJSON);
-    form.appendChild(hidden);
+  // 3) Mostrar/ocultar módulo tarjeta
+  if (metodoPago && tarjetaModule) {
+    metodoPago.addEventListener("change", function() {
+      tarjetaModule.style.display = (metodoPago.value === "Tarjeta") ? "" : "none";
+    });
   }
-});
 
+  // 4) Formateo dinámico número tarjeta
+  if (cardNumberInput) {
+    cardNumberInput.addEventListener("input", function (e) {
+      let raw = e.target.value.replace(/\D/g, "");
+      raw = raw.substring(0, 16);
+      let formatted = raw.replace(/(.{4})/g, "$1-");
+      if (formatted.endsWith("-")) {
+        formatted = formatted.slice(0, -1);
+      }
+      e.target.value = formatted;
+    });
+  }
+
+  // 5) Validación Bootstrap + validación tarjeta + JSON
+  if (form) {
+    form.addEventListener("submit", function(event) {
+
+      // Validación HTML5 general
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+        form.classList.add('was-validated');
+        return;
+      }
+
+      form.classList.add('was-validated');
+
+      // Si el método es tarjeta, validaciones extra
+      if (metodoPago && metodoPago.value === "Tarjeta") {
+
+        var cardNum  = (cardNumberInput ? cardNumberInput.value : "").replace(/\D/g, "").trim();
+        var cardMonth = (cardMonthInput ? cardMonthInput.value : "").trim();
+        var cardYear  = (cardYearInput ? cardYearInput.value : "").trim();
+        var cardCVV   = (cardCVVInput ? cardCVVInput.value : "").trim();
+        var cardHolder = (cardHolderInput ? cardHolderInput.value : "").trim();
+
+        // Guardar MM/AA en hidden
+        var expiraInput = document.getElementById("tarjeta_expira");
+        if (expiraInput) {
+          expiraInput.value = cardMonth + "/" + cardYear;
+        }
+
+        // Validaciones básicas
+        if (cardNum.length !== 16 || isNaN(cardNum)) {
+          alert("Número de tarjeta inválido (16 dígitos numéricos).");
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+
+        var mes = parseInt(cardMonth, 10);
+        if (isNaN(mes) || mes < 1 || mes > 12) {
+          alert("Mes de expiración inválido.");
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+
+        if (cardCVV.length < 3 || cardCVV.length > 4 || isNaN(cardCVV)) {
+          alert("CVV inválido.");
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+
+        // Dejar número limpio en el input para el backend
+        if (cardNumberInput) {
+          cardNumberInput.value = cardNum;
+        }
+
+        // Crear JSON simulado
+        var pagoJSON = {
+          metodo: "tarjeta",
+          tarjeta: {
+            numero: cardNum,
+            mes: cardMonth,
+            anio: cardYear,
+            cvv: cardCVV,
+            titular: cardHolder
+          },
+          timestamp: new Date().toISOString()
+        };
+
+        console.log("JSON enviado al sistema externo:", pagoJSON);
+
+        // Enviar al backend en hidden input
+        var hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.name = "pago_json";
+        hidden.value = JSON.stringify(pagoJSON);
+        form.appendChild(hidden);
+      }
+    });
+  }
+
+});
 </script>
+
 {% endblock %}

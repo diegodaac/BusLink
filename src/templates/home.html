@@ -90,21 +90,19 @@
       </div>
     </div>
 
-  <div class="col-md-3">
-  <div class="card border-0 shadow-sm h-100">
-    <div class="card-body d-flex flex-column">
-      <h5 class="card-title">Viajes próximos</h5>
-      <p class="card-text text-muted flex-grow-1">
-        Ver todos los viajes programados para los próximos días.
-      </p>
-      <a href="{{ url_for('viajes_proximos') }}" class="btn btn-outline-primary mt-auto">
-        Ver viajes próximos
-      </a>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title">Viajes próximos</h5>
+          <p class="card-text text-muted flex-grow-1">
+            Ver todos los viajes programados para los próximos días.
+          </p>
+          <a href="{{ url_for('viajes_proximos') }}" class="btn btn-outline-primary mt-auto">
+            Ver viajes próximos
+          </a>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
-
-
 
     <div class="col-md-{% if current_user.rol == 'Admin' %}3{% elif current_user.rol == 'Chofer' %}4{% else %}4{% endif %}">
       <div class="card border-0 shadow-sm h-100">
@@ -129,6 +127,29 @@
         Selecciona un viaje para iniciar una venta rápida.
       </small>
     </div>
+
+    {# Barra de filtros por estado #}
+    <div class="border-top bg-light px-3 py-2">
+      <strong>Filtrar por estado:</strong>
+      <div class="btn-group btn-group-sm ms-2" role="group" aria-label="Filtro estado">
+        <button type="button" class="btn btn-outline-secondary active" data-filtro-estado="todos">
+          Todos
+        </button>
+        <button type="button" class="btn btn-outline-primary" data-filtro-estado="Programado">
+          Programado
+        </button>
+        <button type="button" class="btn btn-outline-warning" data-filtro-estado="EnRuta">
+          En ruta
+        </button>
+        <button type="button" class="btn btn-outline-success" data-filtro-estado="Finalizado">
+          Finalizado
+        </button>
+        <button type="button" class="btn btn-outline-danger" data-filtro-estado="Cancelado">
+          Cancelado
+        </button>
+      </div>
+    </div>
+
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle">
@@ -142,40 +163,89 @@
             <th scope="col">Chofer</th>
             <th scope="col">Autobús</th>
             <th scope="col" class="text-center">Asientos disp.</th>
-            <th scope="col" class="text-end">Acción</th>
+            <th scope="col" class="text-center">Estado</th>
           </tr>
           </thead>
           <tbody>
-  {% if viajes_hoy %}
-    {% for v in viajes_hoy %}
-      <tr>
-        <td>{{ v.fecha_salida }}</td>
-        <td>{{ v.fecha_llegada }}</td>
-        <td>{{ v.origen_ciudad }} - {{ v.origen_terminal }}</td>
-        <td>{{ v.destino_ciudad }} - {{ v.destino_terminal }}</td>
-        <td>{{ v.ruta_nombre }} / {{ v.clase_nombre }}</td>
-        <td>{{ v.chofer_nombre }}</td>
-        <td>{{ v.autobus_identificador }}</td>
-        <td class="text-center">{{ v.asientos_disponibles }}</td>
-        <td class="text-end">
-          {# En el futuro: llevar a nueva venta con este viaje #}
-          {# <a href="{{ url_for('nueva_venta', id_viaje=v.id_viaje) }}" class="btn btn-sm btn-success">Vender</a> #}
-        </td>
-      </tr>
-    {% endfor %}
-  {% else %}
-    <tr>
-      <td colspan="9" class="text-center text-muted py-4">
-        No hay viajes programados para hoy.
-      </td>
-    </tr>
-  {% endif %}
-</tbody>
+          {% if viajes_hoy %}
+            {% for v in viajes_hoy %}
+              {# Tomamos estado_actual si existe, en otro caso el campo estado #}
+              {% set estado_raw = v.estado_actual if v.estado_actual is defined else v.estado %}
+              <tr data-estado="{{ estado_raw }}">
+                <td>{{ v.fecha_salida }}</td>
+                <td>{{ v.fecha_llegada }}</td>
+                <td>{{ v.origen_ciudad }} - {{ v.origen_terminal }}</td>
+                <td>{{ v.destino_ciudad }} - {{ v.destino_terminal }}</td>
+                <td>{{ v.ruta_nombre }} / {{ v.clase_nombre }}</td>
+                <td>{{ v.chofer_nombre }}</td>
+                <td>{{ v.autobus_identificador }}</td>
+                <td class="text-center">{{ v.asientos_disponibles }}</td>
 
+                <td class="text-center">
+                  {% if estado_raw == 'Cancelado' %}
+                    <span class="badge bg-danger">
+                      <i class="bi bi-x-circle"></i> Cancelado
+                    </span>
+                  {% elif estado_raw == 'Programado' %}
+                    <span class="badge bg-primary">
+                      <i class="bi bi-calendar-check"></i> Programado
+                    </span>
+                  {% elif estado_raw == 'EnRuta' %}
+                    <span class="badge bg-warning text-dark">
+                      <i class="bi bi-truck"></i> En ruta
+                    </span>
+                  {% elif estado_raw == 'Finalizado' %}
+                    <span class="badge bg-success">
+                      <i class="bi bi-check-circle"></i> Finalizado
+                    </span>
+                  {% else %}
+                    <span class="badge bg-secondary">Desconocido</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="9" class="text-center text-muted py-4">
+                No hay viajes programados para hoy.
+              </td>
+            </tr>
+          {% endif %}
+          </tbody>
         </table>
       </div>
     </div>
   </div>
-
 </div>
+
+{# JS para filtros de estado #}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const botones = document.querySelectorAll('[data-filtro-estado]');
+  const filas   = document.querySelectorAll('table tbody tr');
+
+  botones.forEach(btn => {
+    btn.addEventListener('click', function () {
+      const filtro = this.getAttribute('data-filtro-estado');
+
+      // Cambiar botón activo
+      botones.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+
+      // Mostrar/ocultar filas según estado
+      filas.forEach(tr => {
+        const estado = tr.getAttribute('data-estado');
+        if (!estado) return;
+
+        if (filtro === 'todos' || estado === filtro) {
+          tr.classList.remove('d-none');
+        } else {
+          tr.classList.add('d-none');
+        }
+      });
+    });
+  });
+});
+</script>
+
 {% endblock %}

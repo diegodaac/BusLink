@@ -4,9 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d2a17760-b231-4d5f-a9a4-a3a7ed58f4ca" name="Changes" comment="">
+    <list default="true" id="d2a17760-b231-4d5f-a9a4-a3a7ed58f4ca" name="Changes" comment="Se arreglaron issues con el modulo de la venta de boletos y las fechas disponibles">
+      <change afterPath="$PROJECT_DIR$/.idea/git_toolbox_blame.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/git_toolbox_prj.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/templates/chofer/chofer.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/templates/chofer/chofer.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/templates/home.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/templates/home.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/templates/nueva_venta.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/templates/nueva_venta.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -16,9 +21,9 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="CSS File" />
         <option value="Python Script" />
         <option value="HTML File" />
+        <option value="CSS File" />
       </list>
     </option>
   </component>
@@ -124,7 +129,17 @@
       <workItem from="1763436542506" duration="5850000" />
       <workItem from="1763513963963" duration="41252000" />
       <workItem from="1763574503208" duration="9847000" />
+      <workItem from="1763962720587" duration="7798000" />
     </task>
+    <task id="LOCAL-00001" summary="Se arreglaron issues con el modulo de la venta de boletos y las fechas disponibles">
+      <option name="closed" value="true" />
+      <created>1763962845113</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1763962845113</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -147,7 +162,11 @@
       </map>
     </option>
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Se arreglaron issues con el modulo de la venta de boletos y las fechas disponibles" />
+    <option name="LAST_COMMIT_MESSAGE" value="Se arreglaron issues con el modulo de la venta de boletos y las fechas disponibles" />
+  </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/BusLink$app.coverage" NAME="app Coverage Results" MODIFIED="1763951040375" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/BusLink$app.coverage" NAME="app Coverage Results" MODIFIED="1764227548402" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
   </component>
 </project>

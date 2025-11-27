@@ -83,11 +83,12 @@ def home():
         cursor.execute("""
             SELECT
               v.id_viaje,
-              v.fecha_salida,
-              v.fecha_llegada,
+              DATE_FORMAT(v.fecha_salida, '%d/%m/%Y %H:%i') AS fecha_salida,
+              DATE_FORMAT(v.fecha_llegada, '%d/%m/%Y %H:%i') AS fecha_llegada,
+              v.estado,
 
               r.nombre  AS ruta_nombre,
-              cs.nombre AS clase_nombre,  -- ← NUEVO
+              cs.nombre AS clase_nombre,
 
               ch.nombre AS chofer_nombre,
               CONCAT_WS(' ', a.numero_placa, a.numero_fisico) AS autobus_identificador,
@@ -97,12 +98,19 @@ def home():
               dc.nombre  AS destino_ciudad,
               dt.nombre  AS destino_terminal,
 
-              COALESCE(ad.asientos_disponibles, a.capacidad) AS asientos_disponibles
+              COALESCE(ad.asientos_disponibles, a.capacidad) AS asientos_disponibles,
+
+              CASE
+                WHEN v.estado = 'Cancelado' THEN 'Cancelado'
+                WHEN NOW() < v.fecha_salida THEN 'Programado'
+                WHEN NOW() BETWEEN v.fecha_salida AND v.fecha_llegada THEN 'EnRuta'
+                ELSE 'Finalizado'
+              END AS estado_actual
 
             FROM Viaje v
             JOIN Ruta   r  ON r.id_ruta     = v.id_ruta
             JOIN Autobus a ON a.id_autobus  = v.id_autobus
-            JOIN ClaseServicio cs ON cs.id_clase = a.id_clase   -- ← NUEVO JOIN
+            JOIN ClaseServicio cs ON cs.id_clase = a.id_clase
             JOIN Chofer ch  ON ch.id_chofer = v.id_chofer
 
             -- Origen: menor orden_parada
@@ -127,7 +135,6 @@ def home():
             JOIN Terminal dt   ON dt.id_terminal = ve_d.id_terminal
             JOIN Ciudad  dc    ON dc.id_ciudad   = dt.id_ciudad
 
-            -- Asientos disponibles desde la vista
             LEFT JOIN vw_asientos_disponibilidad ad
                    ON ad.id_viaje = v.id_viaje
 
@@ -136,7 +143,7 @@ def home():
             ORDER BY v.fecha_salida;
         """)
 
-        viajes_hoy = cursor.fetchall()  # lista de diccionarios
+        viajes_hoy = cursor.fetchall()
         cursor.close()
 
         viajes_hoy_count = len(viajes_hoy)
@@ -151,7 +158,6 @@ def home():
         boletos_hoy = 0
         monto_hoy = 0.0
 
-    # Fecha formateada para el encabezado del dashboard
     fecha_hoy = datetime.now().strftime("%d/%m/%Y")
 
     return render_template(
@@ -163,6 +169,7 @@ def home():
         viajes_hoy=viajes_hoy,
         viajes_hoy_count=viajes_hoy_count
     )
+
 
 
 @app.route('/protected')
@@ -356,12 +363,12 @@ def chofer():
 
         id_chofer = row['id_chofer']
 
-        # 2) Viajes programados / en ruta para este chofer
+        # 2) Viajes "activos" para este chofer (programados o en ruta, en función del tiempo)
         cursor.execute("""
             SELECT 
                 v.id_viaje,
                 DATE_FORMAT(v.fecha_salida, '%%d/%%m/%%Y') AS fecha,
-                DATE_FORMAT(v.fecha_salida, '%%H:%%i')     AS hora,
+                DATE_FORMAT(v.fecha_salida, '%%H:%%i')       AS hora,
                 t_origen.nombre  AS origen,
                 t_destino.nombre AS destino,
                 CONCAT_WS(' ', a.numero_placa, a.numero_fisico) AS bus,
@@ -375,11 +382,11 @@ def chofer():
 
                 a.capacidad,
 
-                CASE 
-                  WHEN v.estado = 'Programado' THEN 'Pendiente'
-                  WHEN v.estado = 'EnRuta'     THEN 'En Curso'
-                  WHEN v.estado = 'Finalizado' THEN 'Completado'
-                  ELSE v.estado
+                CASE
+                  WHEN v.estado = 'Cancelado' THEN 'Cancelado'
+                  WHEN NOW() < v.fecha_salida THEN 'Pendiente'
+                  WHEN NOW() BETWEEN v.fecha_salida AND v.fecha_llegada THEN 'En Curso'
+                  ELSE 'Completado'
                 END AS estado_mostrar
 
             FROM Viaje v
@@ -404,9 +411,10 @@ def chofer():
             JOIN Autobus a ON a.id_autobus = v.id_autobus
 
             WHERE v.id_chofer = %s
-              AND v.estado IN ('Programado','EnRuta')
+              AND v.estado <> 'Cancelado'
             ORDER BY v.fecha_salida ASC;
         """, (id_chofer,))
+
         rows_viajes = cursor.fetchall()
 
         viajes_programados = []
@@ -423,7 +431,7 @@ def chofer():
                 'estado':    row['estado_mostrar']
             })
 
-        # 3) Historial de viajes finalizados (últimos 10)
+        # 3) Historial de viajes ya finalizados (por tiempo)
         cursor.execute("""
             SELECT 
                 DATE_FORMAT(v.fecha_salida, '%%d/%%m/%%Y') AS fecha,
@@ -447,10 +455,12 @@ def chofer():
             JOIN Terminal t_destino ON t_destino.id_terminal = rt_d.id_terminal
 
             WHERE v.id_chofer = %s
-              AND v.estado = 'Finalizado'
+              AND v.fecha_llegada < NOW()
+              AND v.estado <> 'Cancelado'
             ORDER BY v.fecha_salida DESC
             LIMIT 10;
         """, (id_chofer,))
+
         rows_hist = cursor.fetchall()
 
         historial_viajes = [
@@ -467,9 +477,11 @@ def chofer():
             SELECT COUNT(*) AS total
             FROM Viaje
             WHERE id_chofer = %s
-              AND DATE(fecha_salida) = CURDATE()
-              AND estado = 'Finalizado';
+              AND DATE(fecha_llegada) = CURDATE()
+              AND fecha_llegada < NOW()
+              AND estado <> 'Cancelado';
         """, (id_chofer,))
+
         row_cnt = cursor.fetchone()
         viajes_completados_hoy = row_cnt['total'] if row_cnt else 0
 
@@ -938,28 +950,30 @@ def viajes_proximos():
         sql = """
             SELECT
                 v.id_viaje,
-                DATE_FORMAT(v.fecha_salida, '%d/%m/%Y %H:%i') AS fecha_salida,
-                DATE_FORMAT(v.fecha_llegada, '%d/%m/%Y %H:%i') AS fecha_llegada,
+                DATE_FORMAT(v.fecha_salida, '%%d/%%m/%%%%Y %%H:%%i') AS fecha_salida,
+                DATE_FORMAT(v.fecha_llegada, '%%d/%%m/%%%%Y %%H:%%i') AS fecha_llegada,
 
                 r.nombre AS ruta_nombre,
 
-                -- ORIGEN
                 oc.nombre AS origen_ciudad,
                 ot.nombre AS origen_terminal,
 
-                -- DESTINO
                 dc.nombre AS destino_ciudad,
                 dt.nombre AS destino_terminal,
 
-                -- AUTOBÚS Y CLASE
                 CONCAT_WS(' ', a.numero_placa, a.numero_fisico) AS autobus_identificador,
                 cs.nombre AS clase_nombre,
 
-                -- CHOFER
                 ch.nombre AS chofer_nombre,
 
-                v.estado,
-                COALESCE(ad.asientos_disponibles, a.capacidad) AS asientos_disponibles
+                COALESCE(ad.asientos_disponibles, a.capacidad) AS asientos_disponibles,
+
+                CASE
+                  WHEN v.estado = 'Cancelado' THEN 'Cancelado'
+                  WHEN NOW() < v.fecha_salida THEN 'Programado'
+                  WHEN NOW() BETWEEN v.fecha_salida AND v.fecha_llegada THEN 'EnRuta'
+                  ELSE 'Finalizado'
+                END AS estado_actual
 
             FROM Viaje v
             JOIN Ruta   r  ON r.id_ruta    = v.id_ruta
@@ -967,7 +981,6 @@ def viajes_proximos():
             LEFT JOIN ClaseServicio cs ON cs.id_clase = a.id_clase
             JOIN Chofer ch  ON ch.id_chofer = v.id_chofer
 
-            -- ORIGEN: mínima orden_parada
             JOIN Viaje_Escala ve_o
                    ON ve_o.id_viaje = v.id_viaje
                   AND ve_o.orden_parada = (
@@ -978,7 +991,6 @@ def viajes_proximos():
             JOIN Terminal ot ON ot.id_terminal = ve_o.id_terminal
             JOIN Ciudad  oc  ON oc.id_ciudad   = ot.id_ciudad
 
-            -- DESTINO: máxima orden_parada
             JOIN Viaje_Escala ve_d
                    ON ve_d.id_viaje = v.id_viaje
                   AND ve_d.orden_parada = (
@@ -989,7 +1001,6 @@ def viajes_proximos():
             JOIN Terminal dt ON dt.id_terminal = ve_d.id_terminal
             JOIN Ciudad  dc  ON dc.id_ciudad   = dt.id_ciudad
 
-            -- Asientos disponibles (vista)
             LEFT JOIN vw_asientos_disponibilidad ad
                    ON ad.id_viaje = v.id_viaje
 
