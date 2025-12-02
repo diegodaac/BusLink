@@ -197,7 +197,77 @@ def logout():
 @admin_required
 def admin():
     users = ModelUser.get_all_users(db)
-    return render_template('admin/admin.html', users=users, user=current_user)
+
+    # --- NUEVO BLOQUE: viajes cancelables ---
+    try:
+        cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
+
+        cursor.execute("""
+            SELECT
+                v.id_viaje,
+                DATE_FORMAT(v.fecha_salida, '%d/%m/%Y') AS fecha_salida_label,
+
+                -- ORIGEN: primera escala
+                oc.nombre AS origen_ciudad,
+                ot.nombre AS origen_terminal,
+
+                -- DESTINO: última escala
+                dc.nombre AS destino_ciudad,
+                dt.nombre AS destino_terminal,
+
+                CASE
+                  WHEN v.estado = 'Cancelado' THEN 'Cancelado'
+                  WHEN NOW() < v.fecha_salida THEN 'Programado'
+                  WHEN NOW() BETWEEN v.fecha_salida AND v.fecha_llegada THEN 'EnRuta'
+                  ELSE 'Finalizado'
+                END AS estado_actual
+
+            FROM Viaje v
+            JOIN Ruta r ON r.id_ruta = v.id_ruta
+            JOIN Autobus a ON a.id_autobus = v.id_autobus
+
+            -- ORIGEN: menor orden_parada
+            JOIN Viaje_Escala ve_o
+                   ON ve_o.id_viaje = v.id_viaje
+                  AND ve_o.orden_parada = (
+                      SELECT MIN(orden_parada)
+                      FROM Viaje_Escala
+                      WHERE id_viaje = v.id_viaje
+                  )
+            JOIN Terminal ot ON ot.id_terminal = ve_o.id_terminal
+            JOIN Ciudad  oc  ON oc.id_ciudad   = ot.id_ciudad
+
+            -- DESTINO: mayor orden_parada
+            JOIN Viaje_Escala ve_d
+                   ON ve_d.id_viaje = v.id_viaje
+                  AND ve_d.orden_parada = (
+                      SELECT MAX(orden_parada)
+                      FROM Viaje_Escala
+                      WHERE id_viaje = v.id_viaje
+                  )
+            JOIN Terminal dt ON dt.id_terminal = ve_d.id_terminal
+            JOIN Ciudad  dc  ON dc.id_ciudad   = dt.id_ciudad
+
+            WHERE v.estado <> 'Cancelado'
+              AND v.fecha_salida >= NOW()
+            ORDER BY v.fecha_salida ASC;
+        """)
+
+        viajes_cancelables = cursor.fetchall()
+        cursor.close()
+
+    except Exception as ex:
+        app.logger.error(f"Error cargando viajes cancelables en /admin: {ex}")
+        viajes_cancelables = []
+
+    return render_template(
+        'admin/admin.html',
+        users=users,
+        user=current_user,
+        viajes_cancelables=viajes_cancelables
+    )
+
+
 
 @app.route('/admin/create_user', methods=['POST'])
 @login_required
@@ -877,59 +947,80 @@ def nueva_venta():
 @admin_required
 def ventas_hoy():
     """
-    Reporte de ventas del día, agrupadas por empleado (taquilla).
+    Reporte de ventas agrupadas por empleado (taquilla),
+    para una fecha específica (por defecto, hoy).
     Solo visible para Admin.
     """
+    # 1) Tomar la fecha desde el query string (?fecha=YYYY-MM-DD)
+    param_fecha = request.args.get('fecha', '').strip()
+
+    # Si no viene o viene mal, usamos la fecha de hoy
+    try:
+        if param_fecha:
+            # Intentar parsear la fecha que viene del input type="date"
+            fecha_obj = datetime.strptime(param_fecha, "%Y-%m-%d")
+        else:
+            fecha_obj = datetime.now()
+    except ValueError:
+        # Si la fecha es inválida, caemos a hoy
+        fecha_obj = datetime.now()
+
+    # Formatos útiles
+    fecha_sql = fecha_obj.strftime("%Y-%m-%d")      # para el WHERE en la consulta
+    fecha_consulta = fecha_obj.strftime("%d/%m/%Y") # para mostrar en la vista
+    fecha_consulta_iso = fecha_obj.strftime("%Y-%m-%d")  # para el value del input date
+
     try:
         cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
 
-        # Ventas del día actual agrupadas por empleado
+        # 2) Ventas de la fecha seleccionada agrupadas por empleado
         sql = """
             SELECT 
                 e.id_empleado,
                 e.nombre AS empleado_nombre,
 
-                COUNT(v.id_venta)                       AS num_ventas,
-                COALESCE(SUM(v.monto), 0)              AS total_ventas,
+                COUNT(v.id_venta)                  AS num_ventas,
+                COALESCE(SUM(v.monto), 0)          AS total_ventas,
 
                 -- Desglose por método de pago
-                COALESCE(SUM(CASE WHEN v.metodo_pago = 'Efectivo'     THEN v.monto ELSE 0 END), 0) AS total_efectivo,
-                COALESCE(SUM(CASE WHEN v.metodo_pago = 'Tarjeta'      THEN v.monto ELSE 0 END), 0) AS total_tarjeta,
+                COALESCE(SUM(CASE WHEN v.metodo_pago = 'Efectivo'      THEN v.monto ELSE 0 END), 0) AS total_efectivo,
+                COALESCE(SUM(CASE WHEN v.metodo_pago = 'Tarjeta'       THEN v.monto ELSE 0 END), 0) AS total_tarjeta,
                 COALESCE(SUM(CASE WHEN v.metodo_pago = 'Transferencia' THEN v.monto ELSE 0 END), 0) AS total_transferencia
 
             FROM Venta v
             LEFT JOIN Empleado e ON e.id_empleado = v.id_empleado
 
-            WHERE DATE(v.fecha_venta) = CURDATE()
+            WHERE DATE(v.fecha_venta) = %s
             GROUP BY e.id_empleado, e.nombre
             ORDER BY total_ventas DESC, empleado_nombre;
         """
 
-        cursor.execute(sql)
+        cursor.execute(sql, (fecha_sql,))
         resumen = cursor.fetchall()
         cursor.close()
 
-        # Totales generales del día
+        # 3) Totales generales del día consultado
         total_general = sum(f['total_ventas'] for f in resumen) if resumen else 0
         total_boletos = sum(f['num_ventas'] for f in resumen) if resumen else 0
 
     except Exception as e:
         app.logger.error(f"Error en /admin/ventas_hoy: {e}")
-        flash("Ocurrió un error al cargar el reporte de ventas del día.", "danger")
+        flash("Ocurrió un error al cargar el reporte de ventas.", "danger")
         resumen = []
         total_general = 0
         total_boletos = 0
 
-    fecha_hoy = datetime.now().strftime("%d/%m/%Y")
-
+    # 4) Renderizar template con la fecha seleccionada
     return render_template(
         'ventas_hoy.html',
         user=current_user,
-        fecha_hoy=fecha_hoy,
         resumen=resumen,
         total_general=total_general,
-        total_boletos=total_boletos
+        total_boletos=total_boletos,
+        fecha_consulta=fecha_consulta,
+        fecha_consulta_iso=fecha_consulta_iso
     )
+
 
 
 @app.route('/viajes/proximos')
@@ -950,8 +1041,8 @@ def viajes_proximos():
         sql = """
             SELECT
                 v.id_viaje,
-                DATE_FORMAT(v.fecha_salida, '%%d/%%m/%%%%Y %%H:%%i') AS fecha_salida,
-                DATE_FORMAT(v.fecha_llegada, '%%d/%%m/%%%%Y %%H:%%i') AS fecha_llegada,
+                DATE_FORMAT(v.fecha_salida, '%d/%m/%Y %H:%i') AS fecha_salida,
+                DATE_FORMAT(v.fecha_llegada, '%d/%m/%Y %H:%i') AS fecha_llegada,
 
                 r.nombre AS ruta_nombre,
 
@@ -1026,6 +1117,71 @@ def viajes_proximos():
         fecha_hoy=fecha_hoy,
         viajes=viajes
     )
+
+@app.route('/admin/cancelar_viaje', methods=['POST'])
+@login_required
+@admin_required
+def admin_cancelar_viaje():
+    """
+    Permite a un administrador marcar un viaje como 'Cancelado' de forma manual.
+    Se invoca desde el formulario del panel de administración.
+    """
+    id_viaje = request.form.get('id_viaje')
+
+    if not id_viaje:
+        flash("No se seleccionó ningún viaje para cancelar.", "warning")
+        # Regresamos a la página anterior o, en su defecto, al home
+        return redirect(request.referrer or url_for('home'))
+
+    try:
+        cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
+
+        # 1) Verificar que el viaje exista
+        cursor.execute("""
+            SELECT id_viaje, estado
+            FROM Viaje
+            WHERE id_viaje = %s
+        """, (id_viaje,))
+        viaje = cursor.fetchone()
+
+        if not viaje:
+            cursor.close()
+            flash("El viaje seleccionado no existe.", "danger")
+            return redirect(request.referrer or url_for('home'))
+
+        # 2) Verificar si ya está cancelado
+        if viaje['estado'] == 'Cancelado':
+            cursor.close()
+            flash("El viaje seleccionado ya se encuentra cancelado.", "info")
+            return redirect(request.referrer or url_for('home'))
+
+        # 3) Actualizar estado a 'Cancelado'
+        cursor.execute("""
+            UPDATE Viaje
+            SET estado = 'Cancelado'
+            WHERE id_viaje = %s
+        """, (id_viaje,))
+
+        # (Opcional) Si quieres también marcar los boletos como cancelados:
+        # cursor.execute("""
+        #     UPDATE Boleto
+        #     SET estado = 'Cancelado'
+        #     WHERE id_viaje = %s
+        #       AND estado IN ('Pagado','Reservado','Abordado')
+        # """, (id_viaje,))
+
+        db.connection.commit()
+        cursor.close()
+
+        flash(f"El viaje #{id_viaje} ha sido cancelado correctamente.", "success")
+
+    except Exception as ex:
+        app.logger.error(f"Error al cancelar viaje {id_viaje}: {ex}")
+        db.connection.rollback()
+        flash("Ocurrió un error al intentar cancelar el viaje.", "danger")
+
+    # Regresamos al panel de administración (o a la página que llamó)
+    return redirect(request.referrer or url_for('home'))
 
 
 
